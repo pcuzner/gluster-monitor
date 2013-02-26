@@ -1,0 +1,38 @@
+<gtop>
+	<parameters>
+		<!-- 	The parameters section provides an easy method to change the 
+				way the gtop program works
+				variables are all upper case to give more visibility in the 
+				code to variables set a global level and potentially set externally
+		-->
+		
+		<parm SNMPCOMMUNITY="gluster"/>
+		<parm BLOCKSIZE="512"/>
+		<parm VOLUMEAREAPCT="30"/>
+		<parm NODEAREAPCT="50"/>
+	</parameters>
+	
+	<grouplist>
+		<!-- 	The grouplist sections allows server groups to be defined to simplify
+				batch mode monitoring of gluster hosts. This way a group can consist of 
+				nodes from multiple clusters for example site 1 and site 2, allowing all
+				nodes to be monitored at the same time.
+		-->
+		
+		<group name="services">
+			<server name="svcs"/>	
+		</group>
+		<group name="rhs1">
+			<server name="rhs-1"/>
+			<server name="rhs-2"/>
+			<server name="rhs-3"/>
+			<server name="rhs-4"/>
+		</group>
+		<group name="rhs5">
+			<server name="rhs5-1"/>
+			<server name="rhs5-2"/>
+		</group>
+		
+	</grouplist>
+	
+</gtop>

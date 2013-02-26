@@ -1,0 +1,84 @@
+Change Log
+
+Investigate
+- change curses call to use curses.wrapper(<main>)	< should this be used?
+- screen resize. When detected, the dh and vh settings could be recalculated to resize the areas in the UI?
+- look at pass_persist to expose IOPS to snmp - see http://www.woofpuppy.com/2012/05/exposing-iostat-data-via-snmp-in.html
+	- add IOPS to rollup for cluster in info window
+	- add total IOPS to each node stats - UCD-DISKIO-MIB
+- could add the snmpset for the nicstats to the start up process - check the setting, and warn if necessary
+- ip discards total for each node to pick up network errors
+- add sysUpTimeInstance to each of the nodes
+- change symbols used to be ascii for tty consoles - > up, | down, ? unknown for example
+- add colour
+
+1.1 PLANNED
+- add batch mode where the system stats are provided in bytes making charts etc easier to derive
+
+1.0 PLANNED
+- code review and tidy up (comments review, peer review)
+- on start up check the nscachetimeout for nic stats - if not 1, the output may not be accurate so inform user
+
+0.98 <-- Current
+- change the volume and data sections from windows to pads to support scrolling so gtop can support large clusters
+- change volume area to be scrollable ( up and down keys)
+- change node area to be scrollable (+ and - keys)
+
+
+0.95
+- extended the sort capability to the user allowing the on screen data to be sorted as follows;
+  . volume info (v, toggles name / f toggles freespace / s toggles size)
+  . system data (n nodename / c toggles CPU% . i netin / o netout / r disk reads / w disk writes)
+- expanded config file to provide run time overrides (snmp name, screen area ratio's minimums, disk blocksize/sector)
+- switched to 64bit network counters (SNMP HC OIDs), and added fix to catch counter rollovers/overflows in nic stats
+
+0.92
+- replace the use of python threads with the multiprocssing model to make the calls to snmpwalk non-blocking (async)
+- added numretries=0 and timeout (1sec) parms to snmp class as default for every snmpwalk session
+- if snmp fails for a host - reset the sys stats to 0 - and continue to try and pool to pick up when host comes back online
+- volume information is sorted alphabetically by name for consistent display
+
+0.91
+- replace curses A_REVERSE for volume bars with unicode block symbols making code simpler
+- add status symbol to represent the state of each node in interactive mode - up,down,unknown
+
+
+0.9 ../02/2013 - To Do List
+- Catching xterm resize exception and terminating gracefully. Python 2.7 has features making this easier to handle DONE
+- use the volume list and node list to dynamicaly build the screen window sizes instead of them being hard set - DONE
+- Add -g runtime option - DONE
+- Add function to read external XML config file to define groups of servers to scan (~/gtoprc.xml)--> DONE
+- glusterpeers updated (simplified using join)	--> DONE
+- Errors written to stdout now all prefixed ERR for consistency and 'callout' --> DONE
+- relayout windows just using full width horizontal areas - cluster / volumes / systems - DONE
+- add a rollup of metrics to the info window and relayout to 3 horizontal areas - info > volume > nodes -DONE
+	-disk read/write - DONE
+	-netin netout - DONE
+	- avg/peak CPU - DONE
+	- total usable capacity - configured and free - DONE
+
+
+0.85 ../01/2013
+- Changed output logic to make more reuseable
+- added curses support, CTRL-C or q/Q is available
+- volume and cluster info areas added to the standard host data information
+- removed keyscan (Console class/methods) since curses now being used
+- added display of core count and server memory to host details
+- added support for striped volumes
+- added update to the info window for peer status, with warning if active < cluster size
+
+
+0.81 25/01/2013
+- merge getclusterpeers into a cluster class
+- added issueCMD function, and updated screenSize to use issueCMD - DONE
+- changed references from RHS to gluster - DONE
+- creating host objects earlier simplifying code - DONE
+- changed get peer list to use gluster cli through issueCMD interface - DONE
+- changed thread object to accept a type, to dictate which data function to run - DONE
+- added xlator class and volume class and methods...DONE
+- added get data code for filesystem utilisation and GLUSTERvol updates - DONE
+- switched to using a 1 second pause and timer to manage the data gathering allowing different stats
+  to be gathered at different points - DONE 
+
+0.7  ../01/2013
+- First internal release for peer review
