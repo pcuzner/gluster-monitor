@@ -2,20 +2,14 @@ gluster-monitor
 ===============
 
 Repo hosting an SNMP based CLI tool for monitoring capacity and node performance of a gluster cluster
-	+-------------------------------------------------------------------------------------+
-	|
-	|
-	|
-	+--------------------------------------------------------------------------------------
-
-
 
 Background
 ----------
 gtop is a python program written to provide a means of monitoring the high level activity 
-within a gluster cluster. Gluster itself does not currently expose performance 
-metrics so in order to provide a meaningful indication of workload the node's system statistics
-are gathered over SNMP and aggregated.
+within a gluster cluster. An animated gif is included that shows how the interface functions.
+
+Gluster itself does not currently expose performance metrics so in order to provide a meaningful 
+indication of workload the node's system statistics are gathered over SNMP and aggregated.
 
 The downside to this approach is 
 1. The system stats are refreshed by the snmp agent that is hard set to 5 second
