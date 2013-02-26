@@ -3,27 +3,6 @@ gluster-monitor
 
 Repo hosting an SNMP based CLI tool for monitoring capacity and node performance of a gluster cluster
 
-  +-------------------------------------------------------------------------------------+
-  |gtop - 3.3.0.5rhs   2 nodes,  2 active  CPU%:  2 Avg,  2 peak         10:01:17       |
-  |Activity - Network:  18K in,  18K out    Disk:  94K reads,   6K writes               |
-  |Storage - 9 volumes, 18 bricks /   11G raw,   8G usable, 560M used,   8G free        |
-  |Volume           Bricks   Type   Size   Used   Free   Volume Usage                   |
-  |ctdb                 2     R     491M    25M    466M  █ 5%                           |
-  |ftp                  2     R     991M    33M    959M  █ 3%                           |
-  |repl                 2     R    1015M   195M    820M  ███ 19%                        |
-  |temp1                2     D    1007M    51M    955M  █ 5%                           |
-  |temp2                2     D    1007M    51M    955M  █ 5%                           |
-  |temp3                2     D    1007M    51M    955M  █ 5%                           |
-  |temp4                2     D    1007M    51M    955M  █ 5%                           |
-  |temp5                2     D    1007M    51M    955M  █ 5%                           |
-  |temp6                2     D    1007M    51M    955M  █ 5%                           |
-  |                                                                                     |
-  |                        CPU   Memory %        Network AVG   Disk I/O AVG             |
-  |S Gluster Node     C/T   %    RAM   Real|Swap     In  | Out    Reads | Writes        |
-  |▲ rhs5-1            2     2  491M    92   31       10K     9K    94K      0b         |
-  |▲ rhs5-2            2     2  491M    93   31        8K     9K     0b	     6K         |
-  |                                                                                     |
-  +-------------------------------------------------------------------------------------+
 
 
 
