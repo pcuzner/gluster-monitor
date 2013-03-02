@@ -1268,24 +1268,25 @@ def refreshInfoWindow(win):
 	
 	return 
 
-def refreshNodePad(pad,dh,vh,cursor):
+def refreshNodePad(pad,dh,vh,cursor,toprow):
 	"""	Function to display the node data to the screen """
 	
 	ypos = 0 
+	tgt = cursor + toprow
 	for node in gCluster.nodes:
 						
 		# format this nodes output and display
 		nodeData = node.formatData()
 		
-		if ypos == cursor:
-			pad.addstr(ypos,0,nodeData,curses.A_BOLD)
+		if ypos == tgt:
+			pad.addstr(ypos,0,nodeData,rowHighlight)
 		else:
 			pad.addstr(ypos,0,nodeData)
 		
 
 		ypos += 1
 					
-	pad.noutrefresh(0,0,vh+5,0,vh+5+dh,80)
+	pad.noutrefresh(toprow,0,vh+5,0,vh+5+dh,80)
 
 
 
@@ -1299,7 +1300,7 @@ def refreshVolumePad(pad,vh,cursor,toprow):
 
 		volData = volume.formatVol()
 		if ypos == tgt:
-			pad.addstr(ypos,0,volData,curses.A_BOLD)
+			pad.addstr(ypos,0,volData,rowHighlight)
 		else:
 			pad.addstr(ypos,0,volData)
 																	
@@ -1316,6 +1317,7 @@ def getWindowSizes(screen):
 	# get the dimensions of the screen, and adjust height by 3 due to the fixed info area
 	screenh,screenw = screen.getmaxyx()
 	screenh -=3
+	
 	numOfNodes = len(gCluster.nodes)
 	numOfVolumes = len(gCluster.volumes)
 	
@@ -1390,12 +1392,6 @@ def main(gCluster):
 
 		# used to indicate a row that should be highlighted
 		volumeCursor, nodeCursor = 0, 0			
-		
-		# variables used to indicate the top of the pad that the physical window
-		# will overlay
-		#volumePadTop, nodePadTop = 0, 0				
-
-
 
 
 		# define the variables used to toggle the sort sequence within data and volume windows
@@ -1418,11 +1414,12 @@ def main(gCluster):
 		pNodeTop = 0
 		refreshInfoWindow(infoWindow)
 
-		stdscr.addstr(3,0,"Volume           Bricks   Type   Size   Used   Free   Volume Usage           ",curses.A_UNDERLINE) 
+
+		stdscr.addstr(3,0,"Volume           Bricks   Type   Size   Used   Free   Volume Usage           ",titleHighlight) 
 		stdscr.addstr(5,0,"Please wait...",curses.A_BLINK)
 
-		stdscr.addstr(vh+3,0,"                        CPU      Memory %        Network AVG   Disk I/O AVG")
-		stdscr.addstr(vh+4,0,"S Gluster Node     C/T   %    RAM   Real|Swap     In  | Out    Reads | Writes",curses.A_UNDERLINE)
+		stdscr.addstr(vh+3,0,"                        CPU      Memory %        Network AVG   Disk I/O AVG  ")
+		stdscr.addstr(vh+4,0,"S Gluster Node     C/T   %    RAM   Real|Swap     In  | Out    Reads | Writes",titleHighlight)
 
 		stdscr.noutrefresh()			
 
@@ -1483,7 +1480,7 @@ def main(gCluster):
 					#-----------------------------------------------------------------------------------
 					# Update the screen
 					#-----------------------------------------------------------------------------------					
-					refreshNodePad(nodePad,dh,vh,nodeCursor)
+					refreshNodePad(nodePad,dh,vh,nodeCursor,pNodeTop)
 					
 					# process the bricks/volumes to update roll-up stats
 					raw = 0
@@ -1578,16 +1575,25 @@ def main(gCluster):
 
 				# '+' pressed
 				elif keypress == 43:
-					if nodeCursor < (len(gCluster.nodes) -1):
-						nodeCursor +=1
-						refreshNodePad(nodePad,dh,vh,nodeCursor)
+					if (nodeCursor + pNodeTop) < (len(gCluster.nodes) -1):
+						if nodeCursor == dh :
+							pNodeTop += 1
+						else:
+							
+							nodeCursor +=1
+							
+						refreshNodePad(nodePad,dh,vh,nodeCursor,pNodeTop)
 						nodePad.refresh(pNodeTop,0,vh+5,0,vh+5+dh,80)
 
-				# '-' pressed		
+				# '-' pressed - CHANGES		
 				elif keypress == 45:
-					if nodeCursor > 0:
-						nodeCursor -= 1
-						refreshNodePad(nodePad,dh,vh,nodeCursor)
+					if (nodeCursor + pNodeTop) > 0:
+						if nodeCursor == 0:
+							pNodeTop -= 1
+						else:
+							nodeCursor -= 1
+							
+						refreshNodePad(nodePad,dh,vh,nodeCursor,pNodeTop)
 						nodePad.refresh(pNodeTop,0,vh+5,0,vh+5+dh,80)			
 
 	
@@ -1634,7 +1640,10 @@ def main(gCluster):
 					else:
 						gCluster.nodes.sort(key=lambda node: node.hostName,reverse=True)
 					
-					refreshNodePad(nodePad,dh,vh,nodeCursor)
+					pNodeTop = 0
+					nodeCursor = 0
+					
+					refreshNodePad(nodePad,dh,vh,nodeCursor,pNodeTop)
 					nodePad.refresh(0,0,vh+5,0,vh+5+dh,80)
 						
 				elif keypress in [ord('c'),ord('C')]:
@@ -1643,8 +1652,11 @@ def main(gCluster):
 						gCluster.nodes.sort(key=lambda node: node.cpuBusyPct)
 					else:
 						gCluster.nodes.sort(key=lambda node: node.cpuBusyPct,reverse=True)
+						
+					pNodeTop = 0
+					nodeCursor = 0					
 					
-					refreshNodePad(nodePad,dh,vh,nodeCursor)
+					refreshNodePad(nodePad,dh,vh,nodeCursor,pNodeTop)
 					nodePad.refresh(0,0,vh+5,0,vh+5+dh,80)
 					
 				elif keypress in [ord('i'),ord('I')]:
@@ -1653,8 +1665,11 @@ def main(gCluster):
 						gCluster.nodes.sort(key=lambda node: node.netInRate)
 					else:
 						gCluster.nodes.sort(key=lambda node: node.netInRate,reverse=True)
-
-					refreshNodePad(nodePad,dh,vh,nodeCursor)
+						
+					pNodeTop = 0
+					nodeCursor = 0
+					
+					refreshNodePad(nodePad,dh,vh,nodeCursor,pNodeTop)
 					nodePad.refresh(0,0,vh+5,0,vh+5+dh,80)
 										
 				elif keypress in [ord('o'),ord('O')]:
@@ -1663,8 +1678,11 @@ def main(gCluster):
 						gCluster.nodes.sort(key=lambda node: node.netOutRate)
 					else:
 						gCluster.nodes.sort(key=lambda node: node.netOutRate,reverse=True)
-
-					refreshNodePad(nodePad,dh,vh,nodeCursor)
+						
+					pNodeTop = 0
+					nodeCursor = 0
+					
+					refreshNodePad(nodePad,dh,vh,nodeCursor,pNodeTop)
 					nodePad.refresh(0,0,vh+5,0,vh+5+dh,80)
 
 				elif keypress in [ord('r'),ord('R')]:
@@ -1673,8 +1691,11 @@ def main(gCluster):
 						gCluster.nodes.sort(key=lambda node: node.blocksReadAvg)
 					else:
 						gCluster.nodes.sort(key=lambda node: node.blocksReadAvg,reverse=True)
+						
+					pNodeTop = 0
+					nodeCursor = 0					
 					
-					refreshNodePad(nodePad,dh,vh,nodeCursor)
+					refreshNodePad(nodePad,dh,vh,nodeCursor,pNodeTop)
 					nodePad.refresh(0,0,vh+5,0,vh+5+dh,80)
 										
 				elif keypress in [ord('w'),ord('W')]:
@@ -1683,8 +1704,11 @@ def main(gCluster):
 						gCluster.nodes.sort(key=lambda node: node.blocksWriteAvg)
 					else:
 						gCluster.nodes.sort(key=lambda node: node.blocksWriteAvg,reverse=True)
-
-					refreshNodePad(nodePad,dh,vh,nodeCursor)
+						
+					pNodeTop = 0
+					nodeCursor = 0
+					
+					refreshNodePad(nodePad,dh,vh,nodeCursor,pNodeTop)
 					nodePad.refresh(0,0,vh+5,0,vh+5+dh,80)
 										
 
@@ -1736,6 +1760,8 @@ def main(gCluster):
 		print "volume area " + str(vh)
 		print "voltop is " + str(pVolTop)
 		print "volume cursor is " + str(volumeCursor)
+		print "node top is " + str(pNodeTop)
+		print "node cursor is " + str(nodeCursor)
 	
 	elif errorType == "curses":											# DEBUG ONLY
 		print "ERR: Exception in screen handling (curses). Program needs a window of 80x24"
@@ -1792,8 +1818,21 @@ if __name__ == "__main__":
 	timeTemplate = 	'%H:%M:%S'
 	
 	# define the symbols used to describe node state
-	nodeStatus = { 	'connected' : u'\u25B2',					# UP
-					'disconnected' : u'\u25BC',					# DOWN
+	#nodeStatus = { 	'connected' : u'\u25B2',					# UP
+#					'disconnected' : u'\u25BC',					# DOWN
+#					'unknown' : u'\u003F'}						# Question Mark
+
+	# Could use os.environ['TERM'] - linux = console, xterm is GUI
+	consoleIsTTY = os.environ['TERM'] == 'linux'
+	if consoleIsTTY:
+		titleHighlight=curses.A_REVERSE
+		rowHighlight = curses.A_UNDERLINE
+	else:
+		titleHighlight=curses.A_UNDERLINE
+		rowHighlight = curses.A_BOLD
+	
+	nodeStatus = { 	'connected' : u'\u00BB',					# double arrow right
+					'disconnected' : u'\u2219',					# solid circle
 					'unknown' : u'\u003F'}						# Question Mark
 
 	# Not all variations are listed...since not all variations are supported!
@@ -1880,6 +1919,10 @@ if __name__ == "__main__":
 		if gCluster.nodes:						
 			interactiveMode = True
 			screenY,screenX = screenSize()
+			if screenY <= 9:
+				print "ERR: console/xterm needs to be > 9 rows in size"
+				exit(4)
+				
 			# Build a volume list based on the hosts vol file(s)
 			gCluster.getGlusterVols()
 			gCluster.volumes.sort(key=lambda volume: volume.name)		

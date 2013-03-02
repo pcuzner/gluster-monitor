@@ -23,6 +23,8 @@ Investigate
 - change the volume and data sections from windows to pads to support scrolling so gtop can support large clusters
 - change volume area to be scrollable ( up and down keys)
 - change node area to be scrollable (+ and - keys)
+- updated the symbols used for node up/down and highlighting to account for console (vt) and xterm unicode and 
+  colour differences
 
 
 0.95
