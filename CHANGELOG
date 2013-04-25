@@ -2,6 +2,7 @@ Change Log
 
 Investigate
 - change curses call to use curses.wrapper(<main>)	< should this be used?
+- add help screen overlay to show the commands (greg Olsen)
 - screen resize. When detected, the dh and vh settings could be recalculated to resize the areas in the UI?
 - look at pass_persist to expose IOPS to snmp - see http://www.woofpuppy.com/2012/05/exposing-iostat-data-via-snmp-in.html
 	- add IOPS to rollup for cluster in info window
@@ -11,6 +12,9 @@ Investigate
 - add sysUpTimeInstance to each of the nodes
 - change symbols used to be ascii for tty consoles - > up, | down, ? unknown for example
 - add colour
+- Using a volume status - online, degraded, restricted, offline, stopped
+- changing volume gathering for glusterfs commands - status detail and info and merge the contents together 
+  instead of using the snmp method. May simplify and reduce the code base.
 
 1.1 PLANNED
 - add batch mode where the system stats are provided in bytes making charts etc easier to derive
@@ -19,7 +23,16 @@ Investigate
 - code review and tidy up (comments review, peer review)
 - on start up check the nscachetimeout for nic stats - if not 1, the output may not be accurate so inform user
 
-0.98 <-- Current
+0.99 <-- Current
+- started to split up the code to make it more manageable - gtop_utils, gtop_iputils
+- added checks for ctdb, samba, nfs, self heal, georep on every node scan and updated the node display
+- changed status icons based on terminal type, xterm has better unicode support so use if available
+- added get for hrSystemDate for each node to enable clock skew detection between nodes, with 
+  initial logic to compare time across node sample time stamps - shows when ntp drift or daemon 
+  is not running
+
+
+0.98 
 - change the volume and data sections from windows to pads to support scrolling so gtop can support large clusters
 - change volume area to be scrollable ( up and down keys)
 - change node area to be scrollable (+ and - keys)

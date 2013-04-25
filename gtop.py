@@ -43,25 +43,21 @@
 import os, sys
 import math											# only used for rounding up					
 import threading									# object based module to handle multithreading
-import subprocess									# used by screenSize function
+
 import netsnmp
 import locale										# enabling curses display of unicode chars
 
 import traceback									# tracing exceptions
-
+import datetime
 
 # modules and packages used for XML 
 from xml.dom	import 	minidom
 import xml.parsers.expat
 
-import socket										# IP socket handling, DNS lookups and IP validation
-
 from   time import strftime,gmtime, sleep
 import time
 
 import re											# regex module used for whitelisting interface names
-
-from subprocess import PIPE,Popen					# used in screenSize and issueCMD
 
 from optparse   import OptionParser					# command line option parsing
 
@@ -72,72 +68,10 @@ import syslog										# Used for pushing error msgs to the syslog
 
 import curses										# ncurses interface 
 
-class SNMPsession:
-	
-	def __init__(self,
-			oid='sysdescr',
-			version=2,
-			destHost='localhost'):
-		
-		self.oid=oid
-		self.version=version
-		self.destHost=destHost
-		self.community=SNMPCOMMUNITY
-	
-	def query(self):
-		"""	Issue the snmpwalk. If it fails the output is empty, not exception is thrown, so you need to check
-			the returned value to see if it worked or not ;o)
-		"""
-		
-		result = []
-		# result is a tuple of string values
-		snmpOut = netsnmp.snmpwalk(self.oid, Version=self.version, DestHost=self.destHost, Community=self.community, \
-									Retries=0, Timeout=100000)
-
-		# convert any string element that is actually a number to a usable number (int)
-		for element in snmpOut:
-			if element == None:
-				result.append(element) 
-			elif element.isdigit():
-				result.append(int(element))
-			else:
-				result.append(element)
-
-		return result
+from gtop_utils import convertBytes, issueCMD, oct2DateTime
+from gtop_iputils import SNMPsession, forwardDNS, reverseDNS, validIPv4
 
 
-
-def convertBytes(inBytes):
-	"""
-	Routine to convert a given number of bytes into a more human readable form
-	
-	Input  : number of bytes
-	Output : returns a MB / GB / TB value for bytes
-	
-	"""
-	
-	
-	bytes = float(inBytes)
-	if bytes >= 1125899906842624:
-		size = round(bytes / 1125899906842624)
-		#displayBytes = '%.1fP' % size
-		displayBytes = '%dP' % size
-	elif bytes >= 1099511627776:
-		size = round(bytes / 1099511627776)
-		displayBytes = '%dT' % size
-	elif bytes >= 1073741824:
-		size = round(bytes / 1073741824)
-		displayBytes = '%dG' % size 
-	elif bytes >= 1048576:
-		size = int(round(bytes / 1048576))
-		displayBytes = '%dM' % size
-	elif bytes >= 1024:
-		size = int(round(bytes / 1024))
-		displayBytes = '%dK' % size 
-	else:
-		displayBytes = '%db' % bytes 
-
-	return displayBytes
 
 class GLUSTERvol:
 	def __init__(self, name=""):
@@ -504,7 +438,7 @@ class Cluster:
 		for node in servers:							# Process each server 
 			target = node.hostName
 			print "---> " + target + "",
-			s = SNMPsession(destHost=target)
+			s = SNMPsession(destHost=target,community=SNMPCOMMUNITY)
 			s.oid=netsnmp.Varbind('sysDescr')
 			validSNMP = s.query()						# Try a walk to see if SNMP responds
 			
@@ -528,6 +462,7 @@ class Cluster:
 		for n in self.nodes:
 			print n.hostName
 			print n.state
+			print n.timeStamp 
 			
 		print "active nodes " + str(self.activeNodes)
 		
@@ -538,18 +473,6 @@ class Cluster:
 			print n.errMsg
 				
 		
-
-
-def issueCMD(cmd=""):
-	""" Issue cmd to the system, and return output to caller as a list"""
-	
-	cmdWords = cmd.split()
-	out = subprocess.Popen(cmdWords,stdout=PIPE, stderr=PIPE)
-	(response, errors)=out.communicate()					# Get the output...response is a byte
-															# string that includes \n
-	
-	return response.split('\n')								# use split to return a list
-
 
 def screenSize():
 	"""	Routine which uses stty to determine the size of the console window, Only used in
@@ -624,6 +547,12 @@ class GLUSTERhost:
 		self.procCount = 0						# used
 		self.errMsg = ''
 		self.brickInfo = {}						# used, size[0] and used[1] info for each brick	
+		self.ctdb = "."							# used
+		self.samba = "."						# used
+		self.nfs = "."							# used
+		self.selfHeal = "."						# used
+		self.georep = "."						# used
+		self.timeStamp = None					# used
 		
 		return 
 
@@ -633,7 +562,7 @@ class GLUSTERhost:
 		# an error occurs
 		self.hostActive = True
 		
-		s = SNMPsession(destHost=self.hostName)
+		s = SNMPsession(destHost=self.hostName,community=SNMPCOMMUNITY)
 		
 		if self.procCount == 0:				# On 1st run, get the number of processors for this host
 			s.oid=netsnmp.Varbind('hrDeviceType')
@@ -657,6 +586,21 @@ class GLUSTERhost:
 			self.errMsg = "snmp query for memory failed"
 			self.hostActive = False
 			return
+
+		#------------------------------------------------------------------------------------------------------
+		# Grab this systems current datetime 		
+		#------------------------------------------------------------------------------------------------------
+		s.oid = netsnmp.Varbind('hrSystemDate')
+		dateOct = s.query()										# SNMP returns this as an octet string
+		if dateOct:
+			self.timeStamp = oct2DateTime(dateOct)
+			#syslog.syslog("sent data to main process for " + self.timeStamp)
+			#print self.timeStamp
+		else:
+			self.errMsg = "SNMP query for the datestamp - hrSystemDate - failed"
+			self.hostActive = False
+			return
+		
 
 		#------------------------------------------------------------------------------------------------------
 		# Process the systemStats table
@@ -847,14 +791,11 @@ class GLUSTERhost:
  
 
 	def getState(self):
-		""" Find out whether the glusterd process is active. 
-			NB. Can't simply issue a gluster peer status, since this hangs when glusterd is not there 
-			Using SNMP - hrSWRunName table to show processes active and look for glusterd process
-			
-			May need to re-visit, and switch to a threaded call, with a timeout based on 'peer status'
+		""" Find out whether key gluster processes are active. 
+
 		"""
 		#print "getting state information"
-		s = SNMPsession(destHost=self.hostName)
+		s = SNMPsession(destHost=self.hostName,community=SNMPCOMMUNITY)
 		s.oid = netsnmp.Varbind('hrSWRunName')					# .1.3.6.1.2.1.25.4.2.1.2
 		processList = s.query()
 		
@@ -863,15 +804,59 @@ class GLUSTERhost:
 				self.state = 'connected'
 			else:
 				self.state = 'disconnected'
+			if 'ctdbd' in processList:
+				self.ctdb = 'Y'
+			else:
+				self.ctdb = '.'
+			if 'smbd' in processList:
+				self.samba = 'Y'
+			else:
+				self.samba = '.'
+				
 		else:
 			self.errMsg = "query for process list bombed"
 			self.hostActive = False
 			return 
+			
+		# query of the hrSWRunName gives us the name of the process, but to look
+		# for gluster nfs and gluster self heal pids we need the hrSWRunParameters
+		
+		s.oid = netsnmp.Varbind('hrSWRunParameters')			# .1.3.6.1.2.1.25.4.2.1.5
+		paramList = s.query()
+		
+		self.nfs = "."
+		self.selfHeal = "."
+		self.georep = "."
+		
+		if paramList:	
+
+			# Look at the list of param's for all the processes
+			for parm in paramList:
+
+				# Ignore items that are not string objects
+				if isinstance(parm, basestring):
+					
+					if parm.startswith("-s"):
+						
+						if "nfs" in parm:
+							self.nfs = "Y"
+						elif "glustershd" in parm:
+							self.selfHeal = "Y"
+					elif "gsyncd.py" in parm:
+							self.georep = "Y"
+							
+		else:
+			
+			self.errMsg = "query for param list from process table failed"
+			self.hostActive = False
+			return
+	
+	
 	
 	def getDiskInfo(self, nameSpace):
 		"""	Use SNMP to get the current usage across mounted filesystems """
 	
-		s = SNMPsession(destHost=self.hostName)	
+		s = SNMPsession(destHost=self.hostName,community=SNMPCOMMUNITY)	
 																# first time through look through the filesystem
 		if not self.brickfsOffsets:								# descriptions, and if any match our bricks
 																# record the offset in the brickfsOffset list
@@ -941,15 +926,20 @@ class GLUSTERhost:
 		if interactiveMode:
 
 			displayStats = nodeStatus[self.state].encode('utf-8') + " " + self.fmtdName + " " \
-						+ str(self.procCount).rjust(3) + "   " \
+						+ str(self.procCount).rjust(3) + "  " \
 						+ str(self.cpuBusyPct).rjust(3) + " "  \
-						+ convertBytes((self.memTotal*1024)).rjust(5) + "   " \
-						+ str(self.memUsedPct).rjust(3) + "  " \
-						+ str(self.swapUsedPct).rjust(3) + "    " \
-						+ convertBytes(self.netInRate).rjust(6) + " " \
-						+ convertBytes(self.netOutRate).rjust(6) + " " \
-						+ convertBytes(self.blocksReadAvg*BLOCKSIZE).rjust(6) + "  " \
-						+ convertBytes(self.blocksWriteAvg*BLOCKSIZE).rjust(6) + "   "
+						+ convertBytes((self.memTotal*1024)).rjust(5) + "  " \
+						+ str(self.memUsedPct).rjust(3) + " " \
+						+ str(self.swapUsedPct).rjust(3) + "  " \
+						+ self.ctdb + " " \
+						+ self.samba + " " \
+						+ self.nfs + " " \
+						+ self.selfHeal + " " \
+						+ self.georep + "  " \
+						+ convertBytes(self.netInRate).rjust(5) + " " \
+						+ convertBytes(self.netOutRate).rjust(5) + "  " \
+						+ convertBytes(self.blocksReadAvg*BLOCKSIZE).rjust(5) + "  " \
+						+ convertBytes(self.blocksWriteAvg*BLOCKSIZE).rjust(5) + "  "
 						
 		else:
 			
@@ -1007,44 +997,10 @@ def serverOK(server):
 
 	return result							# return blank, server name or IP
 
-def validIPv4(ip):
-	"""	Attempt to use the inet_aton function to validate whether a given IP is valid or not """
-	
-	try:
-		t = socket.inet_aton(ip)				# try and convert the string to a packed binary format
-		result = True
-	except socket.error:						# if it doesn't work address string is not valid
-		result = False
-	
-	return result
-
-	
-def forwardDNS(name):
-	"""	Use socket module to find name from IP, or just return empty"""
-	
-	try:
-		result = socket.gethostbyname(name)			# Should get the IP for NAME
-	except socket.gaierror:							# Resolution failure
-		result = ""
-	
-	return result	
-	
-def reverseDNS(ip):
-	"""	Use socket module to find name from IP, or just return the IP"""
-	try:
-		out = socket.gethostbyaddr(ip)				# returns 3 member tuple
-		name = out[0]
-		result = name.split('.')[0]					# only 1st entry is of interest, and only the 1st qualifier
-	except:
-		result = "" 
-	
-	return result
-
 
 def initScreen():
 		
 	screen = curses.initscr()
-	#name = curses.longname()
 	#handleColors = curses.has_colors()
 	
 	curses.start_color()
@@ -1202,7 +1158,7 @@ def worker(connection,nameSpace,hostName):
 					
 					if thisHost.hostActive:
 						
-						# Get the status of the nodes (look for glusterd process)
+						# Get the status of the nodes (look for key processes on the node)
 						thisHost.getState()
 			
 			# if snmp fails in any of the above steps the hostActive flag is false, so 
@@ -1231,21 +1187,42 @@ def refreshInfoWindow(win):
 	"""	Routine to refresh the contents of the info window based on the aggregated
 		metrics held by the cluster object (which is fed by the node and volume objects) """
 
+	timestamps = []
+	for node in gCluster.nodes:
+		if node.timeStamp is not None:
+			timestamps.append(node.timeStamp)
+	
+	if len(timestamps) > 0:	
+		timestamps.sort()
+		# Grab the lowest and highest timestamps across the nodes
+		minTime = timestamps[0]
+		maxTime = timestamps[-1]
+		
+		delta = maxTime - minTime
+		deltaSecs = delta.days*86400+delta.seconds
+	
+		# Put a ceiling on the max secs of clock skew
+		if deltaSecs > 999:
+			deltaSecs = 999
+	
+	else:
+		deltaSecs = 0
 		
 	infoLine1_p1 = "gtop - " + gCluster.version.ljust(10) + " " + \
 				str(gCluster.peerCount).rjust(3) + " nodes,"
 
 	infoLine1_p2 = " active" + \
-				"  CPU%:" + str(gCluster.avgCPU).rjust(3) + " Avg," + \
-				str(gCluster.peakCPU).rjust(3) + " peak" + " "*9 + \
+				" CPU%:" + str(gCluster.avgCPU).rjust(3) + " Avg," + \
+				str(gCluster.peakCPU).rjust(3) + " peak" + " Skew:" + \
+				str(deltaSecs).rjust(3) + "s  " + \
 				strftime(timeTemplate, gmtime())
 				
-	infoLine2 =	"Activity - Network:" + convertBytes(gCluster.aggrNetIn).rjust(5) + " in," + \
+	infoLine2 =	"Activity: Network:" + convertBytes(gCluster.aggrNetIn).rjust(5) + " in," + \
 				convertBytes(gCluster.aggrNetOut).rjust(5) + " out" + \
 				"    Disk:" + convertBytes(gCluster.aggrDiskR*BLOCKSIZE).rjust(5) + " reads," + \
 				convertBytes(gCluster.aggrDiskW*BLOCKSIZE).rjust(5) + " writes        "
 				
-	infoLine3 = "Storage -" + str(len(gCluster.volumes)).rjust(2) + " volumes," + \
+	infoLine3 = "Storage:" + str(len(gCluster.volumes)).rjust(2) + " volumes," + \
 				str(len(gCluster.brickXref)).rjust(3) + " bricks / " + \
 				convertBytes(gCluster.rawCapacity).rjust(5) + " raw," + \
 				convertBytes(gCluster.usableCapacity).rjust(5) + " usable," + \
@@ -1415,11 +1392,11 @@ def main(gCluster):
 		refreshInfoWindow(infoWindow)
 
 
-		stdscr.addstr(3,0,"Volume           Bricks   Type   Size   Used   Free   Volume Usage           ",titleHighlight) 
+		stdscr.addstr(3,0,"Volume           Bricks   Type   Size   Used   Free   Volume Usage              ",titleHighlight) 
 		stdscr.addstr(5,0,"Please wait...",curses.A_BLINK)
 
-		stdscr.addstr(vh+3,0,"                        CPU      Memory %        Network AVG   Disk I/O AVG  ")
-		stdscr.addstr(vh+4,0,"S Gluster Node     C/T   %    RAM   Real|Swap     In  | Out    Reads | Writes",titleHighlight)
+		stdscr.addstr(vh+3,0,"                       CPU       Memory %   Daemons     Network     Disk I/O")
+		stdscr.addstr(vh+4,0,"S Gluster Node     C/T  %   RAM  Real|Swap C-S-N-H-G   In  | Out  Reads | Writes",titleHighlight)
 
 		stdscr.noutrefresh()			
 
@@ -1738,7 +1715,6 @@ def main(gCluster):
 			break 
 
 	if interactiveMode:
-		#del dataWindow
 		del nodePad
 		del infoWindow
 		del volumePad
@@ -1755,13 +1731,14 @@ def main(gCluster):
 	if 	errorType == "resize":
 		print "ERR: Resizing the window is not currently supported"
 	
-	if errorType =="dump":
+	if errorType == "dump":
 		print "node area " + str(dh)
 		print "volume area " + str(vh)
 		print "voltop is " + str(pVolTop)
 		print "volume cursor is " + str(volumeCursor)
 		print "node top is " + str(pNodeTop)
 		print "node cursor is " + str(nodeCursor)
+		gCluster.dump()
 	
 	elif errorType == "curses":											# DEBUG ONLY
 		print "ERR: Exception in screen handling (curses). Program needs a window of 80x24"
@@ -1790,7 +1767,7 @@ if __name__ == "__main__":
 				"from gluster nodes to provide a single view of a cluster, that refreshes\n" + \
 				"every 5 seconds." 
 
-	parser = OptionParser(usage=usageInfo,version="%prog 0.98")
+	parser = OptionParser(usage=usageInfo,version="%prog 0.99")
 	parser.add_option("-n","--no-heading",dest="showHeaders",action="store_false",default=True,help="suppress headings")
 	parser.add_option("-s","--servers",dest="serverList",default=[],type="string",help="Comma separated list of names/IP (default uses gluster's peers file)")
 	parser.add_option("-g","--server-group",dest="groupName",default="",type="string",help="Name of a server group define in the users XML config file)")
@@ -1818,22 +1795,24 @@ if __name__ == "__main__":
 	timeTemplate = 	'%H:%M:%S'
 	
 	# define the symbols used to describe node state
-	#nodeStatus = { 	'connected' : u'\u25B2',					# UP
-#					'disconnected' : u'\u25BC',					# DOWN
-#					'unknown' : u'\u003F'}						# Question Mark
+
 
 	# Could use os.environ['TERM'] - linux = console, xterm is GUI
 	consoleIsTTY = os.environ['TERM'] == 'linux'
 	if consoleIsTTY:
 		titleHighlight=curses.A_REVERSE
 		rowHighlight = curses.A_UNDERLINE
+		nodeStatus = { 	'connected' : u'\u00BB',				# double arrow right
+					'disconnected' : u'\u2219',					# solid circle
+					'unknown' : u'\u003F'}						# Question Mark
 	else:
 		titleHighlight=curses.A_UNDERLINE
 		rowHighlight = curses.A_BOLD
+		nodeStatus = { 	'connected' : u'\u25B2',					# UP
+						'disconnected' : u'\u25BC',					# DOWN
+						'unknown' : u'\u003F'}						# Question Mark
 	
-	nodeStatus = { 	'connected' : u'\u00BB',					# double arrow right
-					'disconnected' : u'\u2219',					# solid circle
-					'unknown' : u'\u003F'}						# Question Mark
+
 
 	# Not all variations are listed...since not all variations are supported!
 	volTypeShort = { 'Distributed-Replicated' : 'D-R',
