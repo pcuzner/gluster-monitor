@@ -1,9 +1,10 @@
-#H1 gluster-monitor - gtop
-
+#gluster-monitor - gtop
+-----------------------
 
 This repo hosts an SNMP based CLI tool for monitoring capacity and node performance of a glusterfs cluster
 
-#H2 Background
+##Background
+-------------
 
 gtop is a python program written to provide a means of monitoring the high level activity 
 within a gluster cluster.
@@ -16,11 +17,12 @@ indication of workload, the node's system statistics are gathered over SNMP and 
 
 The image below shows how the UI looks, and also follows a workflow to illustrate the way that node states can transition depending upon glusterd and snmp availability.
 
-![alt text](https://github.com/pcuzner/gluster-monitor/blob/master/gtop-example.gif "gtop UI")  
+![gtop UI example] (/gtop-0.99-screenshot.jpg "gtop UI")  
 
+An animated image is available ![here] (/gtop-example.gif "Animated display"), which give a better indication of how the UI works.
 
-
-#H2 Installation
+##Installation
+--------------
 
 The following packages need to be installed on each of the gluster nodes  
 
@@ -38,7 +40,7 @@ It is recommended that gtop is installed on all gluster nodes. The gtop script r
 
 Optionally a configuration file can be placed in the users home directory called gtoprc.xml. An example of this file is provided in the repo, and can be useful when applying overrides to the script.  
 
-#H2 Usage
+##Usage
 
 *gtop* uses the optionparser module to enable the tool to run in two modes  
 
@@ -74,7 +76,7 @@ to simplify invocation for batch mode.
 
 
 
-#H3 UI Mode
+###UI Mode
 The UI uses the ncurses environment to handle the screen display, and provides a console 
 that is split into 3 main areas;
 
@@ -95,17 +97,17 @@ indication as to the physical configuration. Each node entry shows; cores/thread
 Once launched the volume and Node areas support sorting (forward and reverse), based on specific keys;
 
 *Volume Area*  
-F/f : Freespace
-V/v : volume name
-U/u : UsableSize  
+F/f : Freespace  
+V/v : volume name  
+U/u : UsableSize    
 
 *Node Area*  
-N/n : node name
-C/c : CPU busy
-I/i : Network in average
-O/o : Network out average
-R/r : Disk Read 
-W/w : Disk Write  
+N/n : node name  
+C/c : CPU busy  
+I/i : Network in average  
+O/o : Network out average  
+R/r : Disk Read   
+W/w : Disk Write    
 
 In addition to sorting, the node and volume areas are scrollable to cater for large cluster environments. The node area
 is scrolled using the + or - keys, and the volume area uses the up/down arrow keys.
@@ -114,7 +116,7 @@ is scrolled using the + or - keys, and the volume area uses the up/down arrow ke
 To quit the UI, use 'q' or CTRL-C.
 
 
-#H3 BATCH Mode  
+###BATCH Mode  
 
 Running in batch mode can provide a remote view of the cluster, or potentially allow multiple clusters
 to be grouped and displayed together when using the server group definitions in the configuration file.
@@ -126,7 +128,8 @@ To quit batch mode, use CTRL-C.
 
 A User Guide is also provided in Libreoffice (.odt) format.
 
-#H2 Known Issues  
+## Known Issues  
+---------------
 
 The program's design makes the following compromises;
  
@@ -154,10 +157,10 @@ The side effect for this approach is better scalability and more effective use o
 
 
 
-Feedback
---------
+##Feedback
+----------
+
 Comments and contributions to the code are welcome and encouraged. 
 
 
-Author
-paul dot cuzner at gmail dot com
+Author: paul dot cuzner at gmail dot com
