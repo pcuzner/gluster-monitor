@@ -1,10 +1,8 @@
 #gluster-monitor - gtop
------------------------
 
 This repo hosts an SNMP based CLI tool for monitoring capacity and node performance of a glusterfs cluster
 
 ##Background
--------------
 
 gtop is a python program written to provide a means of monitoring the high level activity 
 within a gluster cluster.
@@ -15,14 +13,13 @@ indication of workload, the node's system statistics are gathered over SNMP and 
 * *Volume Area* - capacity view for the cluster
 * *Node Area* - node performance metrics averaged over a 5 seconds sample interval  
 
-The image below shows how the UI looks, and also follows a workflow to illustrate the way that node states can transition depending upon glusterd and snmp availability.
+The animated image below shows how the UI looks, and also follows a workflow to illustrate the way that node states can transition depending upon glusterd and snmp availability.
 
-![gtop UI example] (/gtop-0.99-screenshot.jpg "gtop UI")  
+![here] (/gtop-example.gif "Animated gtop display")
 
-An animated image is available ![here] (/gtop-example.gif "Animated display"), which give a better indication of how the UI works.
+
 
 ##Installation
---------------
 
 The following packages need to be installed on each of the gluster nodes  
 
@@ -129,7 +126,6 @@ To quit batch mode, use CTRL-C.
 A User Guide is also provided in Libreoffice (.odt) format.
 
 ## Known Issues  
----------------
 
 The program's design makes the following compromises;
  
@@ -158,7 +154,6 @@ The side effect for this approach is better scalability and more effective use o
 
 
 ##Feedback
-----------
 
 Comments and contributions to the code are welcome and encouraged. 
 
