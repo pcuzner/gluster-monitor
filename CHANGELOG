@@ -23,7 +23,13 @@ Investigate
 - code review and tidy up (comments review, peer review)
 - on start up check the nscachetimeout for nic stats - if not 1, the output may not be accurate so inform user
 
-0.99 <-- Current
+0.99-2 <-- Current
+- fixes applied to account for changed SNMP behaviour on Fedora 17 and above (host resources MIB doesn't keep the
+  hrStorage items in sync across Descr / Size and Used)
+- included the older glusterfs 3.2 syntax in the daemon monitoring (-f in 3.2, -s in 3.3!)
+- changes to spec file to make rc.local changes optional, and dependency on glusterfs is now 3.2
+
+0.99
 - started to split up the code to make it more manageable - gtop_utils, gtop_iputils
 - added checks for ctdb, samba, nfs, self heal, georep on every node scan and updated the node display
 - changed status icons based on terminal type, xterm has better unicode support so use if available

@@ -836,7 +836,7 @@ class GLUSTERhost:
 				# Ignore items that are not string objects
 				if isinstance(parm, basestring):
 					
-					if parm.startswith("-s"):
+					if parm[:2] in ["-f", "-s"]:
 						
 						if "nfs" in parm:
 							self.nfs = "Y"
@@ -863,16 +863,22 @@ class GLUSTERhost:
 			
 			s.oid = netsnmp.Varbind('hrStorageDescr') 			# .1.3.6.1.2.1.25.2.3.1.3
 			filesystems = s.query()
+			
 			if filesystems:
-				ctr = 0
-				for fs in filesystems:
+				
+				# Start at the end of the list and work backwards. Going forwards is problematic since
+				# some systems don't report descr/size/used in sync. For example, in F17 descr and size
+				# provide a field for Shared Memory, but used does not so using an index that starts at 
+				# the beginning results in index out of range conditions.
+				ctr = -1
+				for fs in reversed(filesystems):
 					ptr = self.hostName + ":" + fs
 
 					if nameSpace.gCluster.brickXref.has_key(ptr):
 						self.brickfsOffsets.append([ctr,ptr])
 
 						self.brickInfo[ptr]=[0,0]
-					ctr +=1
+					ctr +=-1
 			else:
 				self.errMsg = "query to filesystems descr failed"
 				self.hostActive = False
@@ -890,11 +896,11 @@ class GLUSTERhost:
 			for ctr,ptr in self.brickfsOffsets:
 		
 
-				if ctr <= len(sizeData):
+				#if ctr <= len(sizeData):
 
-					# The sizes returned by the query are in allocation units, which is 4k 
-					# so by multipling by 4096 gives bytes
-					self.brickInfo[ptr][0] = int(sizeData[ctr]) * 4096	
+				# The sizes returned by the query are in allocation units, which is 4k 
+				# so by multipling by 4096 gives bytes
+				self.brickInfo[ptr][0] = int(sizeData[ctr]) * 4096	
 																
 		else:
 			self.errMsg = "query for filesystem size data failed"
@@ -908,8 +914,8 @@ class GLUSTERhost:
 		if usedData:
 			for ctr,ptr in self.brickfsOffsets:
 
-				if ctr<= len(usedData):
-					self.brickInfo[ptr][1] = int(usedData[ctr]) * 4096
+				#if ctr<= len(usedData):
+				self.brickInfo[ptr][1] = int(usedData[ctr]) * 4096
 					
 
 		else:

@@ -42,8 +42,7 @@ class SNMPsession:
 		
 		result = []
 		# result is a tuple of string values
-		snmpOut = netsnmp.snmpwalk(self.oid, Version=self.version, DestHost=self.destHost, Community=self.community, \
-									Retries=0, Timeout=100000)
+		snmpOut = netsnmp.snmpwalk(self.oid, Version=self.version, DestHost=self.destHost, Community=self.community, Retries=0, Timeout=100000)
 
 		# convert any string element that is actually a number to a usable number (int)
 		for element in snmpOut:
