@@ -338,16 +338,6 @@ class Cluster:
 		
 				elif words[0] == 'option':
 					xl.options[words[1]] = words[2]
-					if words[1] == "remote-subvolume":
-						thisHost = xl.options['remote-host']
-						thisPath = xl.options['remote-subvolume']
-																# CHECK - may be able to remove the brick
-						ptr =  thisHost + ":" + thisPath		# objects
-
-						self.brickXref[ptr] = thisVol
-						
-						self.brick2Xlator[ptr] = xl				# Cluster maintains a list of bricks to translators
-																# used for file system size information tracking
 					
 				elif words[0] == 'subvolumes':
 					xl.subvolumes = words[1:]
@@ -355,6 +345,19 @@ class Cluster:
 				elif words[0] == 'end-volume':
 					# only keep xlators that describe the volume layout
 					if xl.type in types.values():
+						
+						if xl.type == "Brick":
+							# Grab this translators hostname and filesystem name (brick)
+							thisHost = xl.options['remote-host']
+							thisPath = xl.options['remote-subvolume']
+																
+							ptr =  thisHost + ":" + thisPath		
+							
+							# the gCluster object maintains a list of bricks to translators
+							# used for file system size information tracking/calculations
+							self.brickXref[ptr] = thisVol
+							self.brick2Xlator[ptr] = xl				
+																
 						stack.append(xl)
 					xl = None
 	
