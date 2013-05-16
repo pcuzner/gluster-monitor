@@ -1,63 +1,91 @@
 GTOP README
 
 Author: Paul Cuzner
-Date: February 2013
+Date: May 2013
 License: GPLv3+ 
 
 
 Background
 ----------
 gtop is a python program was written to provide a means of monitoring the high level activity 
-within a gluster cluster. Gluster itself does not currently expose performance 
-metrics so in order to provide a meaningful indication of workload the node's system statistics
-are gathered over SNMP and aggregated.
+within an glusterfs cluster. Glusterfs itself does not currently expose performance 
+metrics so in order to provide a meaningful indication of workload this program gathers 
+each node's system statistics over SNMP and presents them to the admin.
 
-The downside to this approach is 
-1. The system stats are refreshed by the snmp agent that is hard set to 5 second
-   sample intervals. This limits the granularity of gtop for problem determination and
-   correlation with client side metrics.
-2. snmpd needs to be running on each of the gluster nodes. Under load (80+% CPU), 
-   the snmpd daemon can fail to respond in a timely manner for gtop. In these circumstances
-   gtop resets the stats for the node and marks the node as unknown for that sample run. Nodes 
-   marked as not responding continue to be polled, so as and when they 'recover' data is 
-   made available in the interface.
-   
-It's also worth noting that the netsnmp bindings for python are synchronous, which can block
-the data gathering process. To address this, gtop uses the multiprocessing module, placing the snmp interation
-in separate processes - this way a delay on one nodes sample does not impact the other snmp gathering
-sessions. As a result of this approach, when gtop starts you wil see the following types of processes active;
-- parent process started by the user
-- subprocess handling memory sharing between parent and child processes
-- n x subprocess for node gathering. 
+Example Output
++--------------------------------------------------------------------------------+
+|gtop - 3.3.0.7rhs   2 nodes,  2 active CPU%:  1 Avg,  1 peak Skew:  0s  15:34:28|
+|Activity: Network:  47K in,  48K out    Disk:   0b reads,   9K writes           |
+|Storage:10 volumes, 20 bricks /   23G raw,  14G usable,   3G used,  11G free    |
+|Volume           Bricks   Type   Size   Used   Free   Volume Usage              |
+|ctdb                 2     R     491M    25M    466M  █ 5%                      |
+|ftp                  2     R     991M   283M    709M  █████ 28%                 |
+|repl                 2     R    1015M   195M    820M  ███ 19%                   |
+|smallfiles           2     R	   6G     2G	  4G  ███████ 39%                |
+|temp1                2     D    1007M    51M    955M  █ 5%                      |
+|temp2                2     D    1007M    51M    955M  █ 5%                      |
+|temp3                2     D    1007M    51M    955M  █ 5%                      |
+|temp4                2     D    1007M    51M    955M  █ 5%                      |
+|temp5                2     D    1007M    51M    955M  █ 5%                      |
+|temp6                2     D    1007M    51M    955M  █ 5%                      |
+|                                                                                |
+|                       CPU	 Memory %   Daemons     Network     Disk I/O         | 
+|S Gluster Node     C/T  %   RAM  Real|Swap C-S-N-H-G   In  | Out  Reads | Writes|
+|▲ rhs5-1            2    1  997M   62   0  Y . Y Y .    12K   11K     0b     3K |
+|▲ rhs5-2            2    1  997M   61   0  Y . Y Y .    35K   37K     0b     6K |
++--------------------------------------------------------------------------------+
 
-The side effect for this approach is better scalability and more effective use of multiple cores.
+Features
+--------
+gtop gathers various metrics over SNMP, and gluster configuration data by reading configuration
+files (if available) from the node the program is executed on.
+
+This data gathering enables the following
+* Aggregated performance - cpu, network and disk IO
+* Overall capacity - raw and usable defined by the volumes in the cluster
+* skew - time variation across the node samples (helps to identify ntp misconfiguration)
+* Volume Details - volume type, together with capacity utilisation 
+* Node Details - per node infomation detailing performance and daemon state
+* Node state - each node has a status indicator, showing when glusterd is 
+  inactive, or when snmpd is non-responsive.
+
+The above information is provided in an ncurses UI, but a batch mode option is available that
+provides the performance metrics only (-b or -s invocation parameter)
+
 
 
 Installation
 ------------
-The following packages need to be installed on each of the gluster nodes
-net-snmp
-net-snmp-utils
-net-snmp-python
+* Pre-requisites packages
+  The following packages need to be installed on each of the glusterfs nodes
+  - net-snmp
+  - net-snmp-utils
+  - net-snmp-python
+  
+* Installation files
+  The following files are needed for gtop to function
+  - gtop.py : main program
+  - gtop_iputils : module providing some of the general purpose IP utilities used by gtop
+  - gtop_utils : module providing general purpose functions that could be reused in other programs  
+  - snmpd.conf_example : example snmpd.conf file that allows gtop to gather statistics
+  - gtoprc.xml : sample configuration file for gtop, that provides a means of overriding some 
+                 configuration items at run time
 
-The snmpd daemon needs to be started at boot, and have a known community string defined 
-to allow gtop to poll for data. An example of a working snmpd.conf is provided.
+* Setup Steps
+1. Ensure pre-requisite packages (above) are installed
+2. Place the gtop.py, gtop_utils.py and gtop_iputils.py in the PATH
+3. Save the current snmpd.conf file, and replace with the example provided
+4. enable snmpd to start at boot with chkconfig
+5. [Optional] Update rc.local file to allow the network stats to be refreshed every second by adding
+   snmpset -c <community name> -v2c  127.0.0.1 1.3.6.1.4.1.8072.1.5.3.1.2.1.3.6.1.2.1.2.2 i 1
+6. start snmpd (service snmpd start), and run the snmpset command
+7. [Optional] Add a symlink to gtop.py call gtop, to make execution easier
 
-It is recommended that gtop is installed on all gluster nodes
 
 Usage
 -----
-gtop uses the optionparser module to enable the tool to run in two modes
-1. UI    : This is the default, when run on a gluster node.
-2. BATCH : by starting gtop with a -s or -g flag, the program will only gather 
-           system stats and write them for stdout. 
 
-In both of these modes, the program first looks for a configuration file in the users
-home directory - gtoprc.xml. This file provides overrides for some gtop settings - 
-snmp community string, disk block size, and also allows server groups to be defined 
-to simply invocation for batch mode. An example of the config file is provided.
-
-UI.
+* GUI
 The UI uses the ncurses environment to handle the screen display, and provides a console 
 that is split into 3 main areas;
 
@@ -68,10 +96,12 @@ that is split into 3 main areas;
                  and includes a simple bar chart illustrating % utilised.
 - Node Info    : The bottom of the screen provides the system metrics for each node, and some
                  indication as to the physical configuration. 
-                 Each node entry shows; cores/threads, RAM, followed by utilisation metrics covering
-                 CPU Busy, Memory, network and disk
+                 Each node entry shows; cores/threads, RAM, followed by utilisation metrics 
+                 covering CPU Busy, Memory, network and disk and daemon status checks for 
+                 ctdb, samba, nfs, self heal and geo-replication
 
-Once launched the volume and Node areas support sorting (forward and reverse), based on specific keys;
+Once launched the volume and Node areas support sorting (toggling between forward and reverse)
+based on specific keys;
 
 Volume Area
 F/f : Freespace
@@ -86,9 +116,14 @@ O/o : Network out average
 R/r : Disk Read 
 W/w : Disk Write
 
+Both the volume area and node area are scrollable, to cater for complex deployments. Each area has 
+a highlighted row that indicates the current cursor position. Moving the cursor in the volume area 
+is done with the up and down arrows. Within the node area, the + and - keys are used.
+
 To quit the UI, 'q' or CTRL-C is supported.
 
-BATCH.
+
+* Batch Mode
 Running in batch mode can provide a remote view of the cluster, or potentially allow multiple clusters
 to be grouped and displayed together when using the server group definitions in the configuration file.
 
@@ -98,11 +133,46 @@ to collect system stats for later analysis in a spreadsheet, or processing with 
 To quit batch mode, use CTRL-C.
 
 
+Syntax
+------
+[root@rhs5-1 ~]# gtop.py -h
+Usage: gtop.py [options] argument 
+
+This program uses snmp to gather and present various operational metrics
+from gluster nodes to provide a single view of a cluster, that refreshes
+every 5 seconds.
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -n, --no-heading      suppress headings
+  -s SERVERLIST, --servers=SERVERLIST
+                        Comma separated list of names/IP (default uses
+                        gluster's peers file)
+  -b BGMODE, --bg-mode=BGMODE
+                        Which data to display in 'batch' mode ['nodes', 'all',
+                        'summary'], (default is nodes)
+  -f DATAFORMAT, --format=DATAFORMAT
+                        Output type raw or readable(default)
+  -g GROUPNAME, --server-group=GROUPNAME
+                        Name of a server group define in the users XML config
+                        file)
+
+
+
+Upstream Project
+----------------
+The gtop program is developed within the community and can be found on gluster forge
+--> https://forge.gluster.org/gtop
+
+Packages are available in the repo under the pkgs directory for fedora, and RHEL6.
+
+
+Further Information
+-------------------
+For further information, consult the user guide in the gluster forge git repository.
+
 
 Feedback
 --------
-Comments and contributions to the code are welcome and encouraged. 
-
-Contact the author at pcuzner@redhat.com
-
-
+Comments and feedback can be posted through gluster forge.

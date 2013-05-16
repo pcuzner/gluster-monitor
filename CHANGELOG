@@ -1,29 +1,31 @@
 Change Log
 
 Investigate
-- change curses call to use curses.wrapper(<main>)	< should this be used?
 - add help screen overlay to show the commands (greg Olsen)
 - screen resize. When detected, the dh and vh settings could be recalculated to resize the areas in the UI?
 - look at pass_persist to expose IOPS to snmp - see http://www.woofpuppy.com/2012/05/exposing-iostat-data-via-snmp-in.html
 	- add IOPS to rollup for cluster in info window
 	- add total IOPS to each node stats - UCD-DISKIO-MIB
-- could add the snmpset for the nicstats to the start up process - check the setting, and warn if necessary
+- could add the snmpset for the nicstats to the start up process - check the setting, and warn if necessary - DROPPED
 - ip discards total for each node to pick up network errors
 - add sysUpTimeInstance to each of the nodes
-- change symbols used to be ascii for tty consoles - > up, | down, ? unknown for example
+- change symbols used to be ascii for tty consoles - > up, | down, ? unknown for example DONE
 - add colour
 - Using a volume status - online, degraded, restricted, offline, stopped
 - changing volume gathering for glusterfs commands - status detail and info and merge the contents together 
   instead of using the snmp method. May simplify and reduce the code base.
 
-1.1 PLANNED
-- add batch mode where the system stats are provided in bytes making charts etc easier to derive
 
-1.0 PLANNED
-- code review and tidy up (comments review, peer review)
-- on start up check the nscachetimeout for nic stats - if not 1, the output may not be accurate so inform user
 
-0.99-2 <-- Current
+1.0.0 <-- Current
+- fixed batch mode alignment - DONE
+- added --bg-mode (-b) to show nodes(default), summary, all and --format (-f) for raw or readable(default)
+- Documentation updates to README
+
+0.99-3
+- fixed bug highlighted with 3.4 changes to the order of parameters in the volfiles
+
+0.99-2 
 - fixes applied to account for changed SNMP behaviour on Fedora 17 and above (host resources MIB doesn't keep the
   hrStorage items in sync across Descr / Size and Used)
 - included the older glusterfs 3.2 syntax in the daemon monitoring (-f in 3.2, -s in 3.3!)

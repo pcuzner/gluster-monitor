@@ -17,27 +17,33 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #
-# Usage:It is assumed that if you run the program on a gluster node, you want the interactive mode to get volume info and glusterd 
-#		checks. If this is not needed, the user uses the -s (server list) or -g (group) option to start gathering and displaying 
-#		the system stats for those systems
+# Usage
+# It is assumed that if you run the program on a gluster node, you want the interactive mode to get volume info and glusterd 
+# checks. If this is not needed, the user uses the -s (server list) or -g (group) option to start gathering and displaying 
+# the system stats for those systems
 #
-#
-# Requires 	- snmp packages net-snmp / net-snmp-utils (for snmpset) and net-snmp-python on each gluster node 
-#			- a working snmpd.conf (example provided), and snmpd enabled on each gluster node
-#			- assumes all gluster nodes are registered in DNS or hosts, if a name is used
+# Dependencies
+# 1. snmp packages - net-snmp / net-snmp-utils (for snmpset) and net-snmp-python on each gluster node 
+# 2. a working snmpd daemon (a sample snmpd.conf file is provided
+# 3. [Optional] Update to rc.local on older systems to ensure network stats
+#    are consistent (RHEL6)
+#	 >snmpset -c RHS -v2c  127.0.0.1 1.3.6.1.4.1.8072.1.5.3.1.2.1.3.6.1.2.1.2.2 i 1
+# 4. All gluster nodes are assumed to be registered in DNS
 #			- also worthwhile using rc.local to execute the following to ensure NIC metrics are consistent with dstat/ifstat
-#				>snmpset -c RHS -v2c  127.0.0.1 1.3.6.1.4.1.8072.1.5.3.1.2.1.3.6.1.2.1.2.2 i 1
 #
-# Example snmpd.conf file to allow general access, but rw from localhost available in snmpd.conf_example
+# Data Refresh
+# This program relies on the SNMP agent on each node. SNMP is hard coded for a 5 second refresh rate
+# which means this tool inherits this level of granularity.
 #
-# Problem - snmp update poll is every 5 seconds for a lot of the key metrics, so the 
-#			programs refresh rate is set to 5 to align with snmp
+# References  	
+# https://net-snmp.svn.sourceforge.net/svnroot/net-snmp/trunk/net-snmp/python/README
+# http://www.ibm.com/developerworks/aix/library/au-netsnmpnipython/
+# http://www.ibm.com/developerworks/aix/library/au-multiprocessing/
 #
-# References - 	https://net-snmp.svn.sourceforge.net/svnroot/net-snmp/trunk/net-snmp/python/README
-#				http://www.ibm.com/developerworks/aix/library/au-netsnmpnipython/
-#				http://www.ibm.com/developerworks/aix/library/au-multiprocessing/
-#
-#
+# Return Codes
+# 00 .. completed successfully
+# 04 .. parameter error program aborted during invocation
+# 08 .. program started but xwindow size os too small for the UI to be displayed
 #
 
 import os, sys
@@ -431,6 +437,34 @@ class Cluster:
 			gCluster.aggrDiskW = 0 	
 			
 		pass 
+	
+	def formatStats(self,prefix=""):
+		"""	Format the aggregate stats maintained in updateStats for display in batch mode """
+		
+		if FORMAT == "readable":
+			displayStats = prefix + " < ALL >".ljust(15) + " " \
+						+ "     " \
+						+ str(self.avgCPU).rjust(3) + " " \
+						+ "     " \
+						+ "     " \
+						+ "       " \
+						+ convertBytes(self.aggrNetIn).rjust(5) + "  " \
+						+ convertBytes(self.aggrNetOut).rjust(5) + "  " \
+						+ convertBytes(self.aggrDiskR*BLOCKSIZE).rjust(5) + "  " \
+						+ convertBytes(self.aggrDiskW*BLOCKSIZE).rjust(5)
+		else:
+			displayStats = prefix + ",<ALL>" + "," \
+						+ "," \
+						+ str(self.avgCPU) \
+						+ "," \
+						+ "," \
+						+ "," \
+						+ str(self.aggrNetIn) + "," \
+						+ str(self.aggrNetOut) + "," \
+						+ str(self.aggrDiskR*BLOCKSIZE) + "," \
+						+ str(self.aggrDiskW*BLOCKSIZE)
+#
+		return displayStats
 		
 	def SNMPcheck(self):
 		""" Try to do a high level snmpwalk to see if snmp is listening """
@@ -951,39 +985,54 @@ class GLUSTERhost:
 						+ convertBytes(self.blocksWriteAvg*BLOCKSIZE).rjust(5) + "  "
 						
 		else:
-			
-			displayStats = prefix + " " + self.fmtdName + " " \
-						+ str(self.procCount).rjust(3) + " " \
-						+ str(self.cpuBusyPct).rjust(3) + "  "  \
-						+ convertBytes((self.memTotal*1024)).rjust(5) + " " \
-						+ str(self.memUsedPct).rjust(3) + "  " \
-						+ str(self.swapUsedPct).rjust(3) + "  " \
-						+ convertBytes(self.netInRate).rjust(6) + " " \
-						+ convertBytes(self.netOutRate).rjust(6) + " " \
-						+ convertBytes(self.blocksReadAvg*BLOCKSIZE).rjust(6) + " " \
-						+ convertBytes(self.blocksWriteAvg*BLOCKSIZE).rjust(6)
+			if FORMAT == 'readable':
+				displayStats = prefix + " " + self.fmtdName + " " \
+							+ str(self.procCount).rjust(3) + " " \
+							+ str(self.cpuBusyPct).rjust(3) + " "  \
+							+ convertBytes((self.memTotal*1024)).rjust(5) + "  " \
+							+ str(self.memUsedPct).rjust(3) + "  " \
+							+ str(self.swapUsedPct).rjust(3) + "  " \
+							+ convertBytes(self.netInRate).rjust(5) + "  " \
+							+ convertBytes(self.netOutRate).rjust(5) + "  " \
+							+ convertBytes(self.blocksReadAvg*BLOCKSIZE).rjust(5) + "  " \
+							+ convertBytes(self.blocksWriteAvg*BLOCKSIZE).rjust(5)
+			else:
+				displayStats = prefix + "," + self.hostName + "," \
+							+ str(self.procCount) + "," \
+							+ str(self.cpuBusyPct) + ","  \
+							+ str(self.memTotal*1024) + "," \
+							+ str(self.memUsedPct) + "," \
+							+ str(self.swapUsedPct) + "," \
+							+ str(self.netInRate) + "," \
+							+ str(self.netOutRate) + "," \
+							+ str(self.blocksReadAvg*BLOCKSIZE) + "," \
+							+ str(self.blocksWriteAvg*BLOCKSIZE)
 					
 		return displayStats
 		
 
 	
 			
-def printHeader():
-	global screenX, ScreenY
-	screenY,screenX = screenSize()						# test the screen size again incase window is resized
-	hdrs=[]
-
-	hdrs.append("                             CPU        Memory %  Network AVG   Disk I/O AVG")
-	hdrs.append("  Time    Gluster Node   C/T  %   RAM  Real Swap    In    Out   Reads Writes")
-	hdrs.append("-------- --------------- --- --- ----- ----|---- ------|------ ------|------")
+def printHeader(headerType='readable'):
 	
-	for line in hdrs:
-		print line
+	if headerType == "readable":
+		global screenX, ScreenY
+		screenY,screenX = screenSize()						# test the screen size again incase window is resized
+		hdrs=[]
 	
-	triggerRow = screenY - len(hdrs)
+		hdrs.append("                             CPU        Memory %  Network AVG   Disk I/O AVG")
+		hdrs.append("  Time    Gluster Node   C/T  %   RAM  Real Swap    In    Out   Reads Writes")
+		hdrs.append("-------- --------------- --- --- ----- ----|---- ------|------ ------|------")
+		
+		for line in hdrs:
+			print line
+		
+		triggerRow = screenY - len(hdrs)
+		
+		return triggerRow
 	
-	return triggerRow
-	
+	else:
+		print "TimeStamp,GlusterNode,Cores,CPU%,RAM,Real%,Swap%,NetInBytes,NetOutBytes,DiskReadAVG,DiskWriteAVG"
 
 
 def serverOK(server):
@@ -1418,7 +1467,9 @@ def main(gCluster):
 		# Set "batch mode" counters and write column headers to stdout
 		rowNum = 1										
 		if showHeaders:									
-			triggerRow = printHeader()					
+			triggerRow = printHeader()
+		else:
+			printHeader(headerType='raw')					
 
 	startTime = int(time.time())
 	
@@ -1507,18 +1558,27 @@ def main(gCluster):
 						prefix = tstamp
 					else:
 						prefix = "" 
-						
-					for node in gCluster.nodes:
-						
-						displayStats = node.formatData(prefix)
+					
+					if BGMODE in ['summary','all']:
+						gCluster.updateStats()
+						displayStats = gCluster.formatStats(prefix)
 						print displayStats
+						if showHeaders:
+							rowNum += 1
 						
-						if showHeaders:							# if headers are needed then 
-							rowNum += 1							# track the row number, and trigger header refresh
-							if rowNum > triggerRow:
-								triggerRow = printHeader()
-								rowNum = 1			
-				
+					if BGMODE in ['nodes','all']:
+						
+						for node in gCluster.nodes:
+							
+							displayStats = node.formatData(prefix)
+							print displayStats
+							if showHeaders:
+								rowNum += 1
+							
+					if showHeaders:							# if headers are needed then 
+						if rowNum > triggerRow:
+							triggerRow = printHeader()
+							rowNum = 1			
 
 				pass 
 			
@@ -1776,9 +1836,14 @@ if __name__ == "__main__":
 				"from gluster nodes to provide a single view of a cluster, that refreshes\n" + \
 				"every 5 seconds." 
 
-	parser = OptionParser(usage=usageInfo,version="%prog 0.99")
+	bgModeOptions = ['nodes', 'all', 'summary']
+	dataFormatOptions = ['raw','readable']
+
+	parser = OptionParser(usage=usageInfo,version="%prog 1.0.0")
 	parser.add_option("-n","--no-heading",dest="showHeaders",action="store_false",default=True,help="suppress headings")
 	parser.add_option("-s","--servers",dest="serverList",default=[],type="string",help="Comma separated list of names/IP (default uses gluster's peers file)")
+	parser.add_option("-b","--bg-mode",dest="bgMode",default="nodes",type="string",help="Which data to display in 'batch' mode " + str(bgModeOptions) + ", (default is nodes)")
+	parser.add_option("-f","--format",dest="dataFormat",default="readable",type="string",help="Output type raw or readable(default)")
 	parser.add_option("-g","--server-group",dest="groupName",default="",type="string",help="Name of a server group define in the users XML config file)")
 
 	(options, args) = parser.parse_args()
@@ -1786,7 +1851,28 @@ if __name__ == "__main__":
 	# check for mutually exclusive options
 	if options.serverList and options.groupName:
 		print "-s and -g options are mutually exclusive, use either not both"
-		exit(1)
+		exit(4)
+		
+	# if user provides a server or group list, check the background mode is OK to use	
+	if options.serverList or options.groupName:
+		if options.bgMode and options.bgMode in bgModeOptions:
+			BGMODE = options.bgMode
+		else:
+			print "invalid option supplied on -b option. Valid options are " + str(bgModeOptions)
+			exit(4)
+		
+		if options.dataFormat and options.dataFormat in dataFormatOptions:
+			
+			# Need to check if option is raw, if so then headers aren't needed, but an initial
+			# csv based header row is - no pagination
+			if options.dataFormat == "raw":
+				options.showHeaders = False
+				
+			FORMAT = options.dataFormat
+			
+		else:
+			print "Invalid output option specified. Valid options are - " + str(dataFormatOptions)
+			exit(4)
 
 	whiteList = ['eth','wlan','em','ib']						# wlan for testing ONLY!
 	whiteList = r'|'.join([name + "*" for name in whiteList])
@@ -1909,7 +1995,7 @@ if __name__ == "__main__":
 			screenY,screenX = screenSize()
 			if screenY <= 9:
 				print "ERR: console/xterm needs to be > 9 rows in size"
-				exit(4)
+				exit(8)
 				
 			# Build a volume list based on the hosts vol file(s)
 			gCluster.getGlusterVols()
