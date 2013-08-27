@@ -617,7 +617,7 @@ class GLUSTERhost:
 			self.swapAvail =  memInfo[3]
 			self.memTotal =  memInfo[4]
 			self.memAvail =  memInfo[5]
-			self.swapUsedPct = int(round((self.swapTotal - self.swapAvail)/float(self.swapTotal)*100))
+			self.swapUsedPct = 0 if int(self.swapTotal) == 0 else int(round((self.swapTotal - self.swapAvail)/float(self.swapTotal)*100))
 			self.memUsedPct = int(round((self.memTotal - self.memAvail)/float(self.memTotal)*100))
 		else:
 			self.errMsg = "snmp query for memory failed"
