@@ -21,7 +21,7 @@ Example Output
 |ctdb                 2     R     491M    25M    466M  █ 5%                      |
 |ftp                  2     R     991M   283M    709M  █████ 28%                 |
 |repl                 2     R    1015M   195M    820M  ███ 19%                   |
-|smallfiles           2     R	   6G     2G	  4G  ███████ 39%                |
+|smallfiles           2     R	   6G     2G	  4G   ███████ 39%               |
 |temp1                2     D    1007M    51M    955M  █ 5%                      |
 |temp2                2     D    1007M    51M    955M  █ 5%                      |
 |temp3                2     D    1007M    51M    955M  █ 5%                      |
@@ -29,7 +29,7 @@ Example Output
 |temp5                2     D    1007M    51M    955M  █ 5%                      |
 |temp6                2     D    1007M    51M    955M  █ 5%                      |
 |                                                                                |
-|                       CPU	 Memory %   Daemons     Network     Disk I/O         | 
+|                       CPU	 Memory %   Daemons     Network     Disk I/O     | 
 |S Gluster Node     C/T  %   RAM  Real|Swap C-S-N-H-G   In  | Out  Reads | Writes|
 |▲ rhs5-1            2    1  997M   62   0  Y . Y Y .    12K   11K     0b     3K |
 |▲ rhs5-2            2    1  997M   61   0  Y . Y Y .    35K   37K     0b     6K |
@@ -72,14 +72,23 @@ Installation
                  configuration items at run time
 
 * Setup Steps
+
+All Nodes
 1. Ensure pre-requisite packages (above) are installed
-2. Place the gtop.py, gtop_utils.py and gtop_iputils.py in the PATH
-3. Save the current snmpd.conf file, and replace with the example provided
-4. enable snmpd to start at boot with chkconfig
-5. [Optional] Update rc.local file to allow the network stats to be refreshed every second by adding
+2. copy the gtop tar file to the /root/ directory
+3. untar with tar -xvzf, which will create a gluster-monitor directory
+4. Save the current snmpd.conf file, and replace with the example provided in the gluster-monitor directory
+5. enable snmpd to start at boot with chkconfig
+6. [Recommended] Update rc.local file to allow the network stats to be refreshed every second by adding
    snmpset -c <community name> -v2c  127.0.0.1 1.3.6.1.4.1.8072.1.5.3.1.2.1.3.6.1.2.1.2.2 i 1
-6. start snmpd (service snmpd start), and run the snmpset command
-7. [Optional] Add a symlink to gtop.py call gtop, to make execution easier
+7. start snmpd (service snmpd start), and run the snmpset command
+
+Single node or All nodes
+1. cd to the gluster-monitor directory (e.g. cd /root/gluster-montor)
+2. run the tool by executing ./gtop.py 
+3. [Optional] Add a symlink to gtop.py call gtop, to make execution easier
+4. [Optional] copy and update the gtoprc.xml file to /root if you'd like to change some of the 
+   run time behaviours or establish server groups when running in batch mode
 
 
 Usage
