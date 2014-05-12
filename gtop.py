@@ -536,7 +536,21 @@ class GLUSTERhost:
 		# Need to audit the variable declarations, some may not be used..
 		
 		self.hostName = hostName				# used
-		self.fmtdName = self.hostName[:15].ljust(15)
+
+		# look at the hostname and determine how to format it for
+		# display
+		if '.' in self.hostName:
+			# fqdn for hostname, so just extract host name
+			self.fmtdName = self.hostName.split('.')[0]
+		else:
+			self.fmtdName = self.hostName
+
+		if len(self.fmtdName) > 14:
+			self.fmtdName = self.fmtdName[:14] + ">"
+		else:
+			self.fmtdName = self.fmtdName.ljust(15)
+		
+		
 		self.hostActive = True					# used 
 		self.state = state						# used
 		self.peers = 0
