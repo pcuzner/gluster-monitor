@@ -1,0 +1,19 @@
+syslocation "testlab"
+syscontact INF <pcuzner@redhat.com>
+#
+#
+com2sec local           localhost       gluster
+com2sec other           default         gluster
+#
+group RWGroup   v2c     local
+group ROGroup   v1      other
+group ROGroup   v2c     other
+#
+view    all     included        .1      80
+#
+#               context sec.model       sec.level       prefix  read    write   notif
+access RWGroup  ""      v2c             noauth          exact   all     all     all
+access ROGroup  ""      v2c             noauth          exact   all     none    none
+#
+# Logging - comment this out to show all connections for debuging
+dontLogTCPWrappersConnects yes
