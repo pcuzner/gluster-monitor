@@ -1266,13 +1266,13 @@ def refreshInfoWindow(win):
 	else:
 		deltaSecs = 0
 		
-	infoLine1_p1 = "gtop - " + gCluster.version.ljust(10) + " " + \
+	infoLine1_p1 = "gtop - " + gCluster.version[:11] + " " + \
 				str(gCluster.peerCount).rjust(3) + " nodes,"
 
 	infoLine1_p2 = " active" + \
 				" CPU%:" + str(gCluster.avgCPU).rjust(3) + " Avg," + \
 				str(gCluster.peakCPU).rjust(3) + " peak" + " Skew:" + \
-				str(deltaSecs).rjust(3) + "s  " + \
+				str(deltaSecs).rjust(3) + "s " + \
 				strftime(timeTemplate, gmtime())
 				
 	infoLine2 =	"Activity: Network:" + convertBytes(gCluster.aggrNetIn).rjust(5) + " in," + \
