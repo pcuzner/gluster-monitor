@@ -83,7 +83,13 @@ class GLUSTERvol:
 	def __init__(self, name=""):
 		"""	Initialise an instance of a new gluster volume """
 
+
+		
 		self.name = name
+		
+		self.fmtdName = name if len(name)<17 else name[:15] + ">"
+		
+		self.fmtdName 
 		self.volType = ""
 		self.numBricks = 0
 		self.rawSize = 0
@@ -120,7 +126,7 @@ class GLUSTERvol:
 	def formatVol(self):
 		"""	format volume data for display on the UI """
 		
-		volData = self.name.ljust(15) + "   " + \
+		volData = self.fmtdName.ljust(16) + "  " + \
 				str(self.numBricks).rjust(4) + "    " + \
 				volTypeShort[self.volType] + "   " + \
 				convertBytes(self.usableSize).rjust(5) + "  " + \
